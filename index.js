@@ -8,6 +8,7 @@
 
 const axios = require('axios')
 const aws4  = require('aws4')
+const path = require('path')
 
 const getRequestParams = (method, region, payload, keys={}) => {
 	if (!region)
@@ -27,7 +28,7 @@ const getRequestParams = (method, region, payload, keys={}) => {
 	}
 
 	if (payload)
-		opts.body = JSON.stringify(payload)
+		opts.body = (x => typeof x === 'string' ? x : JSON.stringify(x))(payload)
 
 	if (keys.accessKeyId && keys.secretAccessKey)
 		aws4.sign(opts, { accessKeyId: keys.accessKeyId, secretAccessKey: keys.secretAccessKey })
@@ -35,7 +36,7 @@ const getRequestParams = (method, region, payload, keys={}) => {
 		aws4.sign(opts)
 
 	return {
-		uri: `https://${opts.hostname}${opts.path}`,
+		uri: 'https://' + path.join(opts.hostname, opts.path),
 		headers: opts.headers
 	}
 }
@@ -202,7 +203,7 @@ const Logger = class {
 		let log
 		if (!uploadFreq || uploadFreq < 0) {
 			log = (...args) => {
-				const logs = (args || []).map(x => JSON.stringify(x))
+				const logs = (args || []).map(x => (x => typeof x === 'string' ? x : JSON.stringify(x))(x))
 				// console.log('Logging now...')
 				// console.log(logs)
 				addLogsToStream(logs, logGroupName, logStreamName, region, keys)
@@ -212,7 +213,7 @@ const Logger = class {
 			log = (...args) => {
 				// 1. Accumulate all logs
 				const now = Date.now()
-				const logs = (args || []).map(x => ({ message: JSON.stringify(x), timestamp: now }))
+				const logs = (args || []).map(x => ({ message: (x => typeof x === 'string' ? x : JSON.stringify(x))(x), timestamp: now }))
 				let latestBuffer = (_logbuffer.get(this) || { latest: now, data: [], job: null })
 				latestBuffer.data = latestBuffer.data.concat(logs)
 
